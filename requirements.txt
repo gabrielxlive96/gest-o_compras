@@ -1,0 +1,6 @@
+streamlit
+pandas
+reportlab
+babel
+plotly
+passlib[bcrypt]

@@ -4,3 +4,4 @@ reportlab
 babel
 plotly
 passlib[bcrypt]
+openpyxl

@@ -148,6 +148,7 @@ def init_db():
         ("anderson.rodrigues", bcrypt.hash("senha123"), 0),
         ("rodrigo.pequeno", bcrypt.hash("senha123"), 0),
         ("karina.poli", bcrypt.hash("senha123"), 0)
+        ("joao.chuau", bcrypt.hash("senha123"), 0)
     ]
     cursor.executemany(
         "INSERT OR IGNORE INTO usuarios (username, password_hash, is_admin) VALUES (?, ?, ?)",

@@ -17,6 +17,60 @@ import plotly.express as px
 import uuid
 import shutil
 
+
+def registrar_log_acesso(username, tipo):
+    conn = sqlite3.connect("compras.db")
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS log_acesso (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            tipo TEXT,
+            timestamp TEXT
+        )
+    ''')
+    cursor.execute("INSERT INTO log_acesso (username, tipo, timestamp) VALUES (?, ?, ?)",
+                   (username, tipo, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+def carregar_kpis():
+    conn = sqlite3.connect("compras.db")
+    cursor = conn.cursor()
+
+    mes_atual = datetime.now().strftime('%Y-%m')
+    total_gasto_mes = cursor.execute(
+        "SELECT SUM(valor_total) FROM ordens_compra WHERE strftime('%Y-%m', timestamp) = ?", (mes_atual,)
+    ).fetchone()[0] or 0.0
+
+    unidade_top = cursor.execute(
+        "SELECT unidade, SUM(valor_total) as total FROM ordens_compra GROUP BY unidade ORDER BY total DESC LIMIT 1"
+    ).fetchone()
+    unidade_top_nome = unidade_top[0] if unidade_top else "N/A"
+
+    fornecedor_top = cursor.execute(
+        "SELECT fornecedor, COUNT(*) as freq FROM ordens_compra GROUP BY fornecedor ORDER BY freq DESC LIMIT 1"
+    ).fetchone()
+    fornecedor_top_nome = fornecedor_top[0] if fornecedor_top else "N/A"
+
+    total_ocs = cursor.execute("SELECT COUNT(*) FROM ordens_compra").fetchone()[0]
+
+    df_gastos = pd.read_sql_query('''
+        SELECT strftime('%Y-%m', timestamp) as mes, SUM(valor_total) as total
+        FROM ordens_compra
+        GROUP BY mes ORDER BY mes DESC LIMIT 6
+    ''', conn)
+
+    conn.close()
+
+    return {
+        "total_mes": format_currency(total_gasto_mes, "BRL", locale="pt_BR"),
+        "unidade_top": unidade_top_nome,
+        "fornecedor_top": fornecedor_top_nome,
+        "total_ocs": total_ocs,
+        "df_gastos": df_gastos
+    }
+
 # Configuração de unidades
 UNIDADES = {
     "UPA Cumbica - Guarulhos": {
@@ -517,6 +571,7 @@ if not st.session_state.autenticado:
             st.session_state.usuario = usuario
             st.session_state.is_admin = is_admin
             st.session_state.login_time = datetime.now()
+            registrar_log_acesso(usuario, "login")
             st.success("Login realizado com sucesso!")
             st.rerun()
         else:
@@ -529,6 +584,7 @@ if st.session_state.autenticado and datetime.now() - st.session_state.login_time
     st.session_state.usuario = ""
     st.session_state.is_admin = False
     st.session_state.login_time = None
+    registrar_log_acesso(st.session_state.usuario, "logout")
     st.warning("Sessão expirada. Faça login novamente.")
     st.rerun()
 
@@ -541,6 +597,7 @@ with col2:
         st.session_state.autenticado = False
         st.session_state.usuario = ""
         st.session_state.is_admin = False
+        registrar_log_acesso(st.session_state.usuario, "logout")
         st.session_state.login_time = None
         st.rerun()
 
@@ -564,6 +621,22 @@ if st.session_state.is_admin:
 
 # Filtrar abas que o usuário pode ver
 tabs = [aba for aba in todas_abas if permissoes_usuario.get(aba, {}).get("nivel", "sem_acesso") != "sem_acesso"]
+
+
+if st.session_state.autenticado:
+    st.title("📊 Dashboard Geral")
+    kpis = carregar_kpis()
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total gasto no mês", kpis["total_mes"])
+    col2.metric("Unidade com maior gasto", kpis["unidade_top"])
+    col3.metric("Fornecedor mais frequente", kpis["fornecedor_top"])
+    col4.metric("Total de OCs emitidas", kpis["total_ocs"])
+
+    st.subheader("Gastos nos Últimos 6 Meses")
+    fig = px.bar(kpis["df_gastos"], x="mes", y="total", text_auto=True,
+                 labels={"mes": "Mês", "total": "Total Gasto (BRL)"})
+    st.plotly_chart(fig, use_container_width=True)
+
 
 # Criar abas dinamicamente
 tab_dict = {}

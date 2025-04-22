@@ -148,7 +148,6 @@ def init_db():
         ("anderson.rodrigues", bcrypt.hash("senha123"), 0),
         ("rodrigo.pequeno", bcrypt.hash("senha123"), 0),
         ("karina.poli", bcrypt.hash("senha123"), 0)
-        ("joao.chuau", bcrypt.hash("senha123"), 0)
     ]
     cursor.executemany(
         "INSERT OR IGNORE INTO usuarios (username, password_hash, is_admin) VALUES (?, ?, ?)",
@@ -178,11 +177,6 @@ def init_db():
         ("rodrigo.pequeno", "Controle de Saldo", '{"nivel": "presente"}'),
         ("rodrigo.pequeno", "Histórico de OCs", '{"nivel": "visualizar"}'),
         ("rodrigo.pequeno", "Minha Conta", '{"nivel": "presente"}'),
-        ("joao.chuau", "Gerar OCs", '{"nivel": "completo"}'),
-        ("joao.chuau", "Painel de Gastos", '{"nivel": "presente"}'),
-        ("joao.chuau", "Controle de Saldo", '{"nivel": "presente"}'),
-        ("joao.chuau", "Histórico de OCs", '{"nivel": "visualizar"}'),
-        ("joao.chuau", "Minha Conta", '{"nivel": "presente"}'),
     ]
     cursor.executemany(
         "INSERT OR IGNORE INTO permissoes_abas (username, aba, permissoes) VALUES (?, ?, ?)",
